@@ -6,10 +6,11 @@ from dotenv import load_dotenv
 import re
 from fpdf import FPDF
 
-# --- PAGE CONFIG & STYLE ---
+# --- PAGE CONFIG ---
 load_dotenv()
 st.set_page_config(page_title="OmniMind Intelligence", page_icon="🕵️", layout="wide")
 
+# --- STYLE VAULT ---
 st.markdown("""
     <style>
     header, footer, .stAppHeader, [data-testid="stHeader"] { background-color: transparent !important; visibility: hidden; }
@@ -17,16 +18,20 @@ st.markdown("""
     [data-testid="stChatMessage"] div { color: #FFFFFF !important; }
     div[data-testid="stBottomBlockContainer"] { background-color: #0B0E11 !important; }
     [data-testid="stChatInput"] { background-color: #161B22 !important; border: 1px solid #2D3339 !important; border-radius: 12px !important; }
-    .top-nav { display: flex; gap: 40px; padding: 20px 60px; background-color: #0B0E11; border-bottom: 1px solid #2D3339; color: #8B949E; font-size: 14px; margin-top: -60px; }
-    .nav-active { color: #00E599; font-weight: bold; border-bottom: 2px solid #00E599; }
+    
     [data-testid="stSidebar"] { background-color: #101418 !important; border-right: 1px solid #2D3339; }
     .chip-label { color: #8B949E; font-size: 11px; margin-top: 20px; font-weight: bold; text-transform: uppercase; }
     .evidence-chip { background-color: #161B22; color: #007BFF !important; border: 1px solid #007BFF; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: bold; display: inline-block; }
-    div.stButton > button { background-color: #007BFF !important; color: white !important; width: 100% !important; border-radius: 8px !important; font-weight: bold !important; }
+    
+    div.stButton > button {
+        background-color: #007BFF !important;
+        color: white !important;
+        border: none !important;
+        width: 100% !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+    }
     </style>
-    <div class="top-nav">
-        <span>⊞ Dashboard</span> <span class="nav-active">📂 Projects</span> <span>📄 Docs</span> <span>⚙ Settings</span>
-    </div>
     """, unsafe_allow_html=True)
 
 # --- BACKEND ---
@@ -37,21 +42,19 @@ client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.getenv("OPEN
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 🕵️ UPDATED PDF GENERATOR (NOW WITH EVIDENCE) ---
+# --- PDF GENERATOR ---
 def create_pdf(history):
     pdf = FPDF()
     pdf.add_page()
     
-    # Title Section
     pdf.set_font("Arial", 'B', 18)
-    pdf.set_text_color(0, 123, 255) # Blue
+    pdf.set_text_color(0, 123, 255)
     pdf.cell(200, 15, txt="OMNIMIND FORENSIC CASE FILE", ln=True, align='C')
     pdf.set_font("Arial", size=10)
-    pdf.set_text_color(100, 100, 100) # Gray
+    pdf.set_text_color(100, 100, 100)
     pdf.cell(200, 5, txt="Proprietary Investigation: Enron Archive Subset", ln=True, align='C')
     pdf.ln(10)
     
-    # 1. Conversation Section
     pdf.set_font("Arial", 'B', 12)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 10, "SECTION I: ANALYTICAL DIALOGUE", ln=True)
@@ -66,13 +69,12 @@ def create_pdf(history):
         pdf.multi_cell(0, 5, txt=content)
         pdf.ln(4)
 
-    # 2. Evidence Section
     pdf.add_page()
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "SECTION II: VERIFIED SOURCE MATERIAL", ln=True)
     pdf.ln(5)
 
-    seen_ids = set() # To avoid duplicate emails in the report
+    seen_ids = set()
     for msg in history:
         if "evidence" in msg:
             for doc in msg["evidence"]:
@@ -82,7 +84,6 @@ def create_pdf(history):
                     pdf.cell(0, 7, f"DOC ID: {doc['id']} | SENDER: {doc['sender']}", ln=True)
                     pdf.set_text_color(0, 0, 0)
                     pdf.set_font("Arial", size=8)
-                    # Clean the email text for the PDF
                     clean_text = doc['text'].encode('latin-1', 'ignore').decode('latin-1')
                     pdf.multi_cell(0, 4, txt=clean_text[:1000] + "..." if len(clean_text) > 1000 else clean_text)
                     pdf.ln(5)
@@ -95,13 +96,22 @@ def create_pdf(history):
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("<h2 style='color: white; margin-bottom:0;'>OmniMind <span style='color:#007BFF'>AI</span></h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #8B949E; font-size: 11px; margin-bottom:20px;'>Forensic Intelligence Unit</p>", unsafe_allow_html=True)
+    
     if st.button("+ Start New Case"):
         st.session_state.messages = []
         st.rerun()
+    
     st.markdown("---")
     if st.session_state.messages:
         pdf_report = create_pdf(st.session_state.messages)
-        st.download_button(label="📥 DOWNLOAD CASE REPORT", data=pdf_report, file_name="OmniMind_Forensic_Report.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button(
+            label="📥 DOWNLOAD CASE REPORT",
+            data=pdf_report,
+            file_name="OmniMind_Forensic_Report.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
 # --- MAIN INTERFACE ---
 st.markdown("<h1 style='color:white; margin-top:40px; font-weight:800;'>ENRON FORENSIC ARCHIVE</h1>", unsafe_allow_html=True)
