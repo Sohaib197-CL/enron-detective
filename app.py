@@ -10,7 +10,7 @@ load_dotenv()
 
 # STEP 1: Replace USER_NAME, REPO_NAME, and FILE_NAME with your actual GitHub info
 # Example: https://raw.githubusercontent.com/yourname/enron-detective/main/logo.png
-ICON_URL = "https://raw.githubusercontent.com/Sohaib197-CL/enron-detective/main/images.png"
+ICON_URL = "https://raw.githubusercontent.com/Sohaib197-CL/enron-detective/main/logo.py.png"
 
 st.set_page_config(
     page_title="Enron Intelligence", 
