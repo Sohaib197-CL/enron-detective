@@ -14,6 +14,9 @@ st.set_page_config(page_title="OmniMind Intelligence", page_icon="🕵️", layo
 st.markdown("""
     <style>
     header, footer, .stAppHeader, [data-testid="stHeader"] { background-color: transparent !important; visibility: hidden; }
+    /* FIXED: This makes the Sidebar 'Open' arrow visible even if hidden */
+    button[kind="headerNoContext"] { display: block !important; color: #007BFF !important; }
+    
     .stApp { background-color: #0B0E11 !important; }
     [data-testid="stChatMessage"] div { color: #FFFFFF !important; }
     div[data-testid="stBottomBlockContainer"] { background-color: #0B0E11 !important; }
@@ -52,6 +55,11 @@ def create_pdf(history):
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("<h2 style='color: white;'>OmniMind <span style='color:#007BFF'>AI</span></h2>", unsafe_allow_html=True)
+    
+    # NEW: Visual confirmation of Chat History
+    history_count = len(st.session_state.messages) // 2
+    st.markdown(f"<p style='color: #8B949E; font-size: 12px;'>Active Case History: {history_count} exchanges</p>", unsafe_allow_html=True)
+    
     if st.button("+ Start New Case"):
         st.session_state.messages = []
         st.rerun()
@@ -63,14 +71,12 @@ with st.sidebar:
 # --- MAIN INTERFACE ---
 st.markdown("<h1 style='color:white; margin-top:40px;'>ENRON FORENSIC ARCHIVE</h1>", unsafe_allow_html=True)
 
-# This loop displays the conversation and RESTORES the clickable emails
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if "evidence" in message:
             st.markdown('<p style="color: #8B949E; font-size: 11px; font-weight: bold;">VERIFIED SOURCES:</p>', unsafe_allow_html=True)
             for doc in message["evidence"]:
-                # RESTORED: This makes the email readable again
                 with st.expander(f"🔍 View Email Source: {doc['id']}"):
                     st.write(doc['text'])
 
@@ -89,12 +95,11 @@ if prompt := st.chat_input("Ask OmniMind anything..."):
         evidence_context += f"Source {m['id']}: {text}\n\n"
         evidence_list.append({"id": m['id'], "text": text})
 
-    # 2. Build History (Gemini memory)
-    # We take the last 6 messages so it has a long memory of the chat
+    # 2. History Logic
     chat_memory = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-6:]]
     
     messages_for_ai = [
-        {"role": "system", "content": f"You are a lead investigator. Use this evidence to answer questions. If the user asks follow-up questions, look at the chat history provided. Evidence:\n{evidence_context}"},
+        {"role": "system", "content": f"You are a lead investigator. Use this evidence to answer. Evidence:\n{evidence_context}"},
         *chat_memory
     ]
 
