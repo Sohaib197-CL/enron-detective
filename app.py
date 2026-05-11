@@ -3,26 +3,43 @@ import os
 from pinecone import Pinecone
 from openai import OpenAI
 from dotenv import load_dotenv
-import re
 from fpdf import FPDF
 
 # --- INITIALIZATION ---
 load_dotenv()
-st.set_page_config(page_title="OmniMind Intelligence", page_icon="🕵️", layout="wide")
+# We force the sidebar to start 'expanded' so it's there when you first load
+st.set_page_config(page_title="OmniMind Intelligence", page_icon="🕵️", layout="wide", initial_sidebar_state="expanded")
 
-# --- STYLE VAULT ---
+# --- THE FIX: FORCING THE SIDEBAR BUTTON TO BE VISIBLE ---
 st.markdown("""
     <style>
-    header, footer, .stAppHeader, [data-testid="stHeader"] { background-color: transparent !important; visibility: hidden; }
-    /* FIXED: This makes the Sidebar 'Open' arrow visible even if hidden */
-    button[kind="headerNoContext"] { display: block !important; color: #007BFF !important; }
+    /* 1. Hide the standard tiny arrow */
+    [data-testid="collapsedControl"] {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #007BFF !important;
+        border-radius: 0 8px 8px 0;
+        width: 50px !important;
+        height: 50px !important;
+        top: 10px !important;
+    }
     
+    /* 2. Make the button visible and blue so you can find it */
+    [data-testid="collapsedControl"] svg {
+        color: white !important;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+    /* 3. General Theme Styling */
+    header, footer, .stAppHeader, [data-testid="stHeader"] { visibility: hidden; }
     .stApp { background-color: #0B0E11 !important; }
     [data-testid="stChatMessage"] div { color: #FFFFFF !important; }
     div[data-testid="stBottomBlockContainer"] { background-color: #0B0E11 !important; }
     [data-testid="stChatInput"] { background-color: #161B22 !important; border: 1px solid #2D3339 !important; border-radius: 12px !important; }
     [data-testid="stSidebar"] { background-color: #101418 !important; border-right: 1px solid #2D3339; }
-    .evidence-chip { background-color: #161B22; color: #007BFF !important; border: 1px solid #007BFF; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: bold; display: inline-block; margin-right: 5px; margin-bottom: 5px; }
+    
     div.stButton > button { background-color: #007BFF !important; color: white !important; border: none !important; width: 100% !important; border-radius: 8px !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -56,9 +73,9 @@ def create_pdf(history):
 with st.sidebar:
     st.markdown("<h2 style='color: white;'>OmniMind <span style='color:#007BFF'>AI</span></h2>", unsafe_allow_html=True)
     
-    # NEW: Visual confirmation of Chat History
+    # Active exchanges counter
     history_count = len(st.session_state.messages) // 2
-    st.markdown(f"<p style='color: #8B949E; font-size: 12px;'>Active Case History: {history_count} exchanges</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: #8B949E; font-size: 12px;'>Active Case Memory: {history_count} exchanges</p>", unsafe_allow_html=True)
     
     if st.button("+ Start New Case"):
         st.session_state.messages = []
@@ -80,11 +97,11 @@ for message in st.session_state.messages:
                 with st.expander(f"🔍 View Email Source: {doc['id']}"):
                     st.write(doc['text'])
 
-# --- THE LOGIC ---
+# --- CHAT LOGIC ---
 if prompt := st.chat_input("Ask OmniMind anything..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # 1. Search for evidence (Top 5)
+    # Search for evidence (Top 5)
     query_vector = pc.inference.embed(model="multilingual-e5-large", inputs=[prompt], parameters={"input_type": "query"})
     results = index.query(vector=query_vector[0].values, top_k=5, include_metadata=True)
     
@@ -95,15 +112,15 @@ if prompt := st.chat_input("Ask OmniMind anything..."):
         evidence_context += f"Source {m['id']}: {text}\n\n"
         evidence_list.append({"id": m['id'], "text": text})
 
-    # 2. History Logic
+    # Memory Logic (Last 6 messages)
     chat_memory = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-6:]]
     
     messages_for_ai = [
-        {"role": "system", "content": f"You are a lead investigator. Use this evidence to answer. Evidence:\n{evidence_context}"},
+        {"role": "system", "content": f"You are a lead investigator. Use this evidence and history to answer. Evidence:\n{evidence_context}"},
         *chat_memory
     ]
 
-    with st.spinner("Analyzing Archive..."):
+    with st.spinner("Searching Archive..."):
         response = client.chat.completions.create(
             model="google/gemini-2.0-flash-001",
             messages=messages_for_ai
