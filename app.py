@@ -8,9 +8,8 @@ from fpdf import FPDF
 # --- INITIALIZATION ---
 load_dotenv()
 
-# STEP 1: Replace USER_NAME, REPO_NAME, and FILE_NAME with your actual GitHub info
-# Example: https://raw.githubusercontent.com/yourname/enron-detective/main/logo.png
-ICON_URL = "https://raw.githubusercontent.com/Sohaib197-CL/enron-detective/main/logo.py.png"
+# CUSTOM LOGO LINK
+ICON_URL = "https://raw.githubusercontent.com/Sohaib197-CL/enron-detective/main/logo.pys.png"
 
 st.set_page_config(
     page_title="Enron Intelligence", 
@@ -59,30 +58,31 @@ def create_pdf(history):
         pdf.ln(4)
     return pdf.output(dest='S').encode('latin-1')
 
-# --- SIDEBAR (Assignment & History) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.markdown("<h2 style='color: white;'>Enron <span style='color:#007BFF'>Intelligence</span></h2>", unsafe_allow_html=True)
     
-    # Visual History for Assignment
+    # REVERTED & UPDATED: New Chat Button
+    if st.button("+ New Chat"):
+        st.session_state.messages = []
+        st.rerun()
+    
+    # Investigation Log (Visual History)
     user_questions = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
     if user_questions:
-        st.markdown("<p style='color: white; font-size: 14px; font-weight: bold; margin-top: 20px;'>INVESTIGATION HISTORY</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: white; font-size: 14px; font-weight: bold; margin-top: 20px;'>INVESTIGATION LOG</p>", unsafe_allow_html=True)
         for q in user_questions:
             st.markdown(f'<div class="history-item">{q[:25]}...</div>', unsafe_allow_html=True)
     
     st.markdown("---")
-    
-    # Tech Stack for Assignment
+
+    # Tech Stack
     with st.expander("🛠️ Tech Stack Details"):
         st.write("**Model:** Gemini 2.0 Flash")
         st.write("**Database:** Pinecone Vector DB")
         st.write("**Frontend:** Streamlit")
-        st.write("**Dataset:** Enron Email Archive (500k+ emails)")
+        st.write("**Dataset:** Enron Email Archive")
     
-    if st.button("+ Reset Conversation"):
-        st.session_state.messages = []
-        st.rerun()
-
     if st.session_state.messages:
         pdf_report = create_pdf(st.session_state.messages)
         st.download_button(label="📥 DOWNLOAD REPORT", data=pdf_report, file_name="Enron_Report.pdf", mime="application/pdf", use_container_width=True)
@@ -113,10 +113,10 @@ if prompt := st.chat_input("Search the archive..."):
         evidence_context += f"Source {m['id']}: {text}\n\n"
         evidence_list.append({"id": m['id'], "text": text})
 
-    # AI Memory (History)
+    # AI Memory
     chat_memory = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-6:]]
     messages_for_ai = [
-        {"role": "system", "content": f"You are a forensic expert. Answer based on the provided evidence and conversation history. Evidence:\n{evidence_context}"},
+        {"role": "system", "content": f"You are a forensic expert. Answer based on the provided evidence and history. Evidence:\n{evidence_context}"},
         *chat_memory
     ]
 
