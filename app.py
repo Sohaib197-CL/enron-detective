@@ -19,7 +19,7 @@ st.markdown("""
     div[data-testid="stBottomBlockContainer"] { background-color: #0B0E11 !important; }
     [data-testid="stChatInput"] { background-color: #161B22 !important; border: 1px solid #2D3339 !important; border-radius: 12px !important; }
     [data-testid="stSidebar"] { background-color: #101418 !important; border-right: 1px solid #2D3339; }
-    .evidence-chip { background-color: #161B22; color: #007BFF !important; border: 1px solid #007BFF; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: bold; display: inline-block; margin-right: 5px; }
+    .evidence-chip { background-color: #161B22; color: #007BFF !important; border: 1px solid #007BFF; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: bold; display: inline-block; margin-right: 5px; margin-bottom: 5px; }
     div.stButton > button { background-color: #007BFF !important; color: white !important; border: none !important; width: 100% !important; border-radius: 8px !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -63,18 +63,22 @@ with st.sidebar:
 # --- MAIN INTERFACE ---
 st.markdown("<h1 style='color:white; margin-top:40px;'>ENRON FORENSIC ARCHIVE</h1>", unsafe_allow_html=True)
 
+# This loop displays the conversation and RESTORES the clickable emails
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if "evidence" in message:
+            st.markdown('<p style="color: #8B949E; font-size: 11px; font-weight: bold;">VERIFIED SOURCES:</p>', unsafe_allow_html=True)
             for doc in message["evidence"]:
-                st.markdown(f'<div class="evidence-chip">🔍 {doc["id"]}</div>', unsafe_allow_html=True)
+                # RESTORED: This makes the email readable again
+                with st.expander(f"🔍 View Email Source: {doc['id']}"):
+                    st.write(doc['text'])
 
-# --- THE LOGIC (WITH HISTORY & TOP_K=5) ---
+# --- THE LOGIC ---
 if prompt := st.chat_input("Ask OmniMind anything..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # 1. Search for evidence (Top 5 only now)
+    # 1. Search for evidence (Top 5)
     query_vector = pc.inference.embed(model="multilingual-e5-large", inputs=[prompt], parameters={"input_type": "query"})
     results = index.query(vector=query_vector[0].values, top_k=5, include_metadata=True)
     
@@ -85,11 +89,12 @@ if prompt := st.chat_input("Ask OmniMind anything..."):
         evidence_context += f"Source {m['id']}: {text}\n\n"
         evidence_list.append({"id": m['id'], "text": text})
 
-    # 2. Build Memory (Feed the last 4 messages back to AI)
-    chat_memory = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-4:]]
+    # 2. Build History (Gemini memory)
+    # We take the last 6 messages so it has a long memory of the chat
+    chat_memory = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-6:]]
     
     messages_for_ai = [
-        {"role": "system", "content": f"You are a lead forensic investigator. Use this evidence to answer: {evidence_context}. Be critical and look for suspicious patterns."},
+        {"role": "system", "content": f"You are a lead investigator. Use this evidence to answer questions. If the user asks follow-up questions, look at the chat history provided. Evidence:\n{evidence_context}"},
         *chat_memory
     ]
 
