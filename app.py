@@ -9,7 +9,7 @@ from fpdf import FPDF
 load_dotenv()
 
 # CUSTOM LOGO LINK
-ICON_URL = "https://raw.githubusercontent.com/Sohaib197-CL/enron-detective/main/logo.pys.png"
+ICON_URL = "https://raw.githubusercontent.com/Sohaib197-CL/enron-detective/main/logo.py.png"
 
 st.set_page_config(
     page_title="Enron Intelligence", 
